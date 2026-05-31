@@ -9,12 +9,13 @@ def main():
 	#ler o prompt apartir do command line
 	parser = argparse.ArgumentParser(description="ChatBot")
 	parser.add_argument("user_prompt", type=str, help="user prompt")
+	parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
 	args = parser.parse_args()
 	#carregar as var de ambiente apartir do .env
 	load_dotenv()
 	api_key = os.environ.get("GEMINI_API_KEY")
 	if api_key is None:
-		raise RunTimeError("Not found a API KEY for the model")
+		raise RuntimeError("Not found a API KEY for the model")
 	#criar o cliente que vai conversar com o modelo de IA, nesse caso um objecto
 	client = genai.Client(api_key=api_key)
 	#conversa persistente com a IA, entendo histórico e contexto
@@ -24,10 +25,17 @@ def main():
 		contents=messages
 	)
 	if response.usage_metadata is None:
-		raise RunTimeError("API request fail, try again") 
-	print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-	print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-	print(response.text)
+		raise RuntimeError("API request fail, try again")
+	if not args.verbose:
+		print(response.text)
+	else:
+		print(
+        	f"User prompt: {args.user_prompt}\n\n"
+        	f"Prompt tokens: {response.usage_metadata.prompt_token_count}\n\n"
+        	f"Response tokens: {response.usage_metadata.candidates_token_count}\n\n"
+        	f"{response.text}"
+    	)
+
 
 
 if __name__ == "__main__":
