@@ -2,10 +2,13 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from google.genai import types
 import argparse
+from prompts import system_prompt
 
 
 def main():
+	print(system_prompt)
 	#ler o prompt apartir do command line
 	parser = argparse.ArgumentParser(description="ChatBot")
 	parser.add_argument("user_prompt", type=str, help="user prompt")
@@ -22,7 +25,8 @@ def main():
 	messages: list[types.Content] = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])] 
 	response = client.models.generate_content(
 		model="gemini-2.5-flash",
-		contents=messages
+		contents=messages,
+		config=types.GenerateContentConfig(system_instruction=system_prompt),
 	)
 	if response.usage_metadata is None:
 		raise RuntimeError("API request fail, try again")
