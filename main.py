@@ -13,7 +13,11 @@ def main():
     print(system_prompt)
 
     parser = argparse.ArgumentParser(description="ChatBot")
-    parser.add_argument("user_prompt", type=str, help="user prompt")
+    parser.add_argument(
+        "user_prompt",
+        type=str,
+        help="user prompt",
+    )
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -36,59 +40,71 @@ def main():
         )
     ]
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions],
-            system_instruction=system_prompt,
-        ),
-    )
+    for _ in range(20):
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions],
+                system_instruction=system_prompt,
+            ),
+        )
 
-    if response.usage_metadata is None:
-        raise RuntimeError("API request failed, try again")
+        if response.usage_metadata is None:
+            raise RuntimeError("API request failed, try again")
 
-    function_responses = []
+        function_responses = []
 
-    if response.function_calls:
-        for function_call in response.function_calls:
-			
-            function_call_result = call_function(function_call, args.verbose,)
+        # TOOL CALLS
+        if response.function_calls:
+            for function_call in response.function_calls:
+                function_call_result = call_function(
+                    function_call,
+                    args.verbose,
+                )
 
-            if not function_call_result.parts:
-                raise Exception("Parts are None")
+                if not function_call_result.parts:
+                    raise Exception("Parts are None")
 
-            if function_call_result.parts[0].function_response is None:
-                raise Exception("Function response is None")
+                if function_call_result.parts[0].function_response is None:
+                    raise Exception("Function response is None")
 
-            if (
-                function_call_result.parts[0]
-                .function_response
-                .response
-                is None
-            ):
-                raise Exception("Response is None")
+                if function_call_result.parts[0].function_response.response is None:
+                    raise Exception("Response is None")
 
-            function_responses.append(
-                function_call_result.parts[0]
+                function_responses.append(
+                    function_call_result.parts[0]
+                )
+
+                if args.verbose:
+                    print(
+                        f"-> "
+                        f"{function_call_result.parts[0].function_response.response}"
+                    )
+
+            messages.append(
+                types.Content(
+                    role="user",
+                    parts=function_responses,
+                )
             )
 
-            if args.verbose:
-                print(
-                    f"-> "
-                    f"{function_call_result.parts[0].function_response.response}"
-                )
-    else:
+            continue
+
+        # FINAL RESPONSE
         print(response.text)
 
-    if args.verbose:
-        print(
-            f"\nUser prompt: {args.user_prompt}\n"
-            f"Prompt tokens: "
-            f"{response.usage_metadata.prompt_token_count}\n"
-            f"Response tokens: "
-            f"{response.usage_metadata.candidates_token_count}"
-        )
+        if args.verbose:
+            print(
+                f"\nUser prompt: {args.user_prompt}\n"
+                f"Prompt tokens: {response.usage_metadata.prompt_token_count}\n"
+                f"Response tokens: {response.usage_metadata.candidates_token_count}"
+            )
+
+        return
+
+    print("Error: Maximum iterations reached")
+    raise SystemExit(1)
 
 
 if __name__ == "__main__":
